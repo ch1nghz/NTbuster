@@ -1,5 +1,5 @@
 CC          = g++
-LD          = g++
+LD          = g++ -lncurses
 CFLAG       = -Wall
 PROG_NAME   = prog
 STDFLAG     = -std=c++11

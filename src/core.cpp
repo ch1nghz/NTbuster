@@ -6,6 +6,9 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <regex>
+#include <ncurses.h>
+#include <cstring>
+#include <cstring>
 using namespace std;
 
 class Cracker {
@@ -21,14 +24,12 @@ class Cracker {
                 usernames.push_back(username);
                 username = busername;
             }
-            // std::cout << vec[1] << " Wordlist";
             return usernames;
         }
 
         std::pair<bool, string> crack(std::vector<string> wordlist, const char* hash){
             for (int i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
-                // std::cout << wordlist[i] << std::endl;
                 if (std::strcmp(hash, generated_hash) == 0) {
                     return std::make_pair(true, wordlist[i]);
                 }
@@ -74,7 +75,6 @@ class Cracker {
             }
             
             if (std::regex_search(modified_input, match, re)) {
-                // std::cout << "Found it!: " << match[1] << std::endl;
                 matched_str = match[1].str();
             };
 
@@ -99,7 +99,7 @@ class Cracker {
             return creds;
         }
 
-        void launch() {
+        std::string launch() {
             std::string output = get_ntds();
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
             for (const auto& kv : creds) {
@@ -107,13 +107,14 @@ class Cracker {
                 std::pair<bool, string> crack_status = crack(wl, kv.second.c_str());
                 // std::cout << kv.second.c_str() << std::endl;
                 if (crack_status.first) {
-                    std::cout << "Password Cracked: username is " 
-                        << kv.first 
-                        << " password is " 
-                        << crack_status.second 
-                        << std::endl;
+                    std::string resp = "Password Cracked: username is " +
+                        kv.first +
+                        " password is " +
+                        crack_status.second;
+                        return resp;
                 }
             }
+            return std::string();
         }
 
     private:
@@ -134,8 +135,57 @@ class Cracker {
 };
 
 int main() {
+    // initialize ncurses
+    initscr();
+    cbreak();
+    keypad(stdscr, TRUE);
+
+    // set up colors
+    start_color();
+    init_pair(1, COLOR_CYAN, COLOR_BLACK);
+    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(4, COLOR_GREEN, COLOR_BLACK);
+    init_pair(5, COLOR_RED, COLOR_BLACK);
+    attron(COLOR_PAIR(1));
+
+    // draw banner
+    const char* banner_text = "    _   __________               __           \n"
+                     "   / | / /_  __/ /_  __  _______/ /____  _____\n"
+                     "  /  |/ / / / / __ \\/ / / / ___/ __/ _ \\/ ___/\n"
+                     " / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    \n"
+                     "/_/ |_/ /_/ /_.___/\\__,_/____/\\__/\\___/_/     \n";
+
+    int y = LINES / 2 - 6;
+    printw(banner_text);
+    move(y + 6, 0);
+    refresh();
+
+    // get target value from user input
+    mvprintw(LINES / 2 + 2, COLS / 2 - 12, "Enter target: ");
+    echo();
+    char target[100];
+    getstr(target);
+    noecho();
+    clear();
+    target[strcspn(target, "\n")] = 0;
+
+    // display user's input
+    printw(banner_text);
+    refresh();
+
+    // use target value
     Cracker C;
-    C.target = "testuser:123456@172.16.57.2";
-    C.launch();
+    C.target = target;
+    std::string response = C.launch();
+    int response_len = response.length();
+    int response_x = (COLS - response_len) / 2;
+    int response_y = LINES / 2 + 2;
+    mvprintw(response_y, response_x, "%s", response.c_str());
+    refresh();
+    getch();
+
+    // clean up ncurses and exit
+    endwin();
     return 0;
 }
