@@ -137,12 +137,5 @@ int main() {
     Cracker C;
     C.target = "testuser:123456@172.16.57.2";
     C.launch();
-    // std::vector<string> wl = C.generate(C.username);
-    // bool resp = C.crack(wl);
-    // const char* hash = gen_ntlm("Hello");
-    // cout << hash << " Response\n"; 
-    // string output = C.get_ntds();
-    // std::unordered_map<std::string, std::string> parsed = C.parse_hashes(output);
-
     return 0;
 }

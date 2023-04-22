@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# Impacket - Collection of Python classes for working with network protocols.
+#
+# SECUREAUTH LABS. Copyright (C) 2022 SecureAuth Corporation. All rights reserved.
+
 from __future__ import division
 from __future__ import print_function
 import argparse
