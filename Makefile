@@ -1,7 +1,7 @@
 CC          = g++
-LD          = g++ -lncurses
+LD          = g++
 CFLAG       = -Wall
-PROG_NAME   = prog
+PROG_NAME   = NTbuster
 STDFLAG     = -std=c++11
 
 SRC_DIR     = ./src
