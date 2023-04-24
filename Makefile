@@ -1,6 +1,6 @@
 CC          = g++
 LD          = g++
-CFLAG       = -Wall -I./src/CLI11/include
+CFLAG       = -Wall -I./src
 PROG_NAME   = NTbuster
 STDFLAG     = -std=c++11
 
