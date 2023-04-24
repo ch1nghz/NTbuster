@@ -10,7 +10,7 @@ BIN_DIR     = ./bin
 SRC_LIST    = $(wildcard $(SRC_DIR)/*.cpp)
 OBJ_LIST    = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_LIST))
 
-.PHONY: all clean $(PROG_NAME) compile
+.PHONY: all clean $(PROG_NAME) install-deps compile
 
 all: $(PROG_NAME)
 
@@ -21,6 +21,10 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 $(PROG_NAME): compile
 	$(LD) $(OBJ_LIST) -o $(BIN_DIR)/$@
+
+install-deps:
+	apt-get update
+	apt-get install -y libcli-dev
 
 clean:
 	rm -f $(BIN_DIR)/$(PROG_NAME) $(BUILD_DIR)/*.o
