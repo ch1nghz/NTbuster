@@ -47,7 +47,7 @@ class Cracker {
         }
         
         string get_ntds() {
-            std::string command = "/usr/bin/python3 ./scripts/secretsdump.py ";
+            std::string command = "/usr/bin/python3 ./vendor/scripts/secretsdump.py ";
             std::stringstream ss;
             ss << command << target << " > /tmp/output.txt";
             command = ss.str();
