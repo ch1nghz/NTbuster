@@ -31,7 +31,7 @@ class Cracker {
         }
 
         std::pair<bool, string> crack(std::vector<string> wordlist, const char* hash){
-            for (int i = 0; i < wordlist.size(); i++) {
+            for (auto i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
                     return std::make_pair(true, wordlist[i]);
@@ -182,6 +182,20 @@ int main(int argc, char** argv) {
                      "/_/ |_/ /_/ /_.___/\\__,_/____/\\__/\\___/_/     \n";
     cout << banner_text << endl;
 
+    std::string python_check_command = "/usr/bin/python3 --version > /dev/null 2>&1";
+    std::string impacket_check_command = "/usr/bin/python3 -c \"import impacket\" > /dev/null 2>&1";
+ 
+    // Check if Python3 is installed
+    if (system(python_check_command.c_str()) != 0) {
+        std::cerr << "[-] Error: Python3 is not installed." << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // Check if Impacket is installed
+    if (system(impacket_check_command.c_str()) != 0) {
+        std::cerr << "[-] Error: Impacket is not installed. Please install it by running 'pip3 install impacket'." << std::endl;
+        return EXIT_FAILURE;
+    }
     CLI::App app{"MyApp"};
 
     std::string ip_address, username, password;
