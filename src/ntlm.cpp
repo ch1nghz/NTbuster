@@ -1,9 +1,25 @@
 #include <iostream>
 #include <dlfcn.h>
+#include <sys/utsname.h>
 
 const char* gen_ntlm(const std::string& data) {
+    // Determine the name of the operating system
+    struct utsname os_info;
+    uname(&os_info);
+
     // Load the Rust library dynamically
-    void *lib = dlopen("./lib/newlib.dylib", RTLD_LAZY);
+    std::string lib_name;
+    std::string os_name(os_info.sysname);
+    if (os_name.compare("Linux") == 0) {
+        lib_name = "./lib/libntlmhash.so";
+    } else if (os_name.compare("Darwin") == 0) {
+        lib_name = "./lib/libntlmhash.dylib";
+    } else {
+        std::cerr << "Unsupported operating system: " << os_info.sysname << std::endl;
+        return nullptr;
+    }
+
+    void *lib = dlopen(lib_name.c_str(), RTLD_LAZY);
     if (!lib) {
         std::cerr << "Error loading Rust library: " << dlerror() << std::endl;
         return nullptr;
@@ -25,9 +41,9 @@ const char* gen_ntlm(const std::string& data) {
         dlclose(lib);
         return nullptr;
     }
+
     // Unload the Rust library
     dlclose(lib);
 
     return hash_cstr;
 }
-

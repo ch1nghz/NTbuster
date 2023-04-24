@@ -5,9 +5,7 @@ edition = "2021"
 
 [lib]
 name = "ntlmhash"
-crate-type = ["dylib"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+crate-type = ["cdylib"] # this is for macos, delete for linux based systems
 
 [dependencies]
 ntlm-hash = "0.1.0"
