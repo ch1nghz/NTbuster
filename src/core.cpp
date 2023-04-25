@@ -11,6 +11,7 @@
 #include <CLI/CLI.hpp>
 #include <thread>
 #include <stdlib.h>
+#include <cctype>
 using namespace std;
 
 class Cracker {
@@ -61,6 +62,14 @@ class Cracker {
                 for (const auto& extension : mixed_extensions) {    
                     std::string new_username = usernames[i] + extension; // create a new username
                     new_usernames.push_back(new_username); // add it to the new vector
+                    char& first_char = new_username.front();
+                    if (std::islower(first_char)) {
+                        first_char = std::toupper(first_char);
+                        new_usernames.push_back(new_username);
+                    } else if (std::isupper(first_char)) {
+                        first_char = std::tolower(first_char);
+                        new_usernames.push_back(new_username);
+                    }
                 }
             }
 
