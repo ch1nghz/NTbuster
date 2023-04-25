@@ -11,6 +11,9 @@ cd NTbuster
 make
 ```
 
+## System Requirements
+At least 8GB free memory and 4 CPU cores
+
 ## Running NTbuster
 ```
 ./bin/NTbuster --target-ip 172.16.57.2 -u testuser -p 123456
