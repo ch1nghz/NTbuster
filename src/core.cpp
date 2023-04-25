@@ -94,7 +94,7 @@ class Cracker {
         
         string get_ntds() {
             setenv("TARGET", target.c_str(), 1);
-            system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"{TARGET}\" > /tmp/output.txt");
+            system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
             ifstream fin("/tmp/output.txt");
             string output = "";
             while (fin) {
