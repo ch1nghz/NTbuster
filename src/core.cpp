@@ -113,6 +113,7 @@ class Cracker {
                     "'" << wordlist[i] << "']" <<
                     "\033[0m" <<
                     std::endl;
+                    return;
                 }
             }
         }
@@ -132,8 +133,7 @@ class Cracker {
 
         std::unordered_map<std::string, std::string> parse_hashes(const std::string& input) {        
             std::unordered_map<std::string, std::string> result;
-            std::regex re("\\(nthash\\)\n(.*)\n\\[\\*\\]");
-            std::regex re_for_dc("NTDS\\.DIT secrets\n(.*?)\n\\[\\*\\]");
+            std::regex re("nthash\\)([^\\[]*)\\[\\*\\]");
             std::string modified_input = input; // Create a non-const copy of the input string
             std::smatch match;
             std::string matched_str;
@@ -145,14 +145,9 @@ class Cracker {
             std::istringstream iss_line("");
             std::unordered_map<std::string, std::string> creds;
 
-            if (std::regex_search(modified_input, match, re_for_dc)) {
-                matched_str = match[1].str();
-            } else {
-                match = std::smatch();
-                if (std::regex_search(modified_input, match, re)) {        
+            if (std::regex_search(modified_input, match, re)) {        
                     matched_str = match[1].str();
-                }
-            };
+            }
             iss.str(matched_str);
             while (std::getline(iss, token)){
                 split_result.push_back(token);
