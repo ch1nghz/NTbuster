@@ -209,7 +209,7 @@ class Cracker {
                 threads.emplace_back(
                     &Cracker::crack, this, std::cref(wl), kv.second.c_str(), kv.first.c_str()
                 );
-                if (threads.size() == 10) {
+                if (threads.size() == 1) {
                     for (auto& thread : threads) {
                         thread.join();
                     }
