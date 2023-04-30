@@ -182,6 +182,7 @@ class Cracker {
 
         void launch(int target_machine) {
             std::vector<std::future<void>> futures;
+
             std::cout << "\033[33m" << "[*] Dumping hashes..." << 
                 "\033[0m" <<
                 std::endl;
@@ -209,8 +210,8 @@ class Cracker {
                 futures.push_back(std::move(future));
             }
             std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
-                f.wait();
-            });
+                 f.wait();
+             });
         }
 
     private:
