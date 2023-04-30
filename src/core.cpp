@@ -12,6 +12,8 @@
 #include <thread>
 #include <stdlib.h>
 #include <cctype>
+#include <future>
+#include <algorithm>
 using namespace std;
 
 class Cracker {
@@ -113,7 +115,7 @@ class Cracker {
                     "'" << wordlist[i] << "']" <<
                     "\033[0m" <<
                     std::endl;
-                    return;
+                    break;
                 }
             }
         }
@@ -179,10 +181,7 @@ class Cracker {
         }
 
         void launch(int target_machine) {
-            std::pair<bool, string> crack_status;
-            std::vector<std::thread> threads;
-            std::vector<std::pair<bool, std::string>> results;
-
+            std::vector<std::future<void>> futures;
             std::cout << "\033[33m" << "[*] Dumping hashes..." << 
                 "\033[0m" <<
                 std::endl;
@@ -199,23 +198,19 @@ class Cracker {
                 "\033[0m" <<
                 std::endl;
             std::unordered_map<std::string, std::string> creds = parse_hashes(output);
+            
             clean();
+            
             for (const auto& kv : creds) {
-                std::cout << "\033[33m" << "[*] The password of '" << 
-                    kv.first << "' is cracking..." 
-                    "\033[0m" <<
-                    std::endl;
+                std::cout << "\033[33m" << "[*] The password of '" << kv.first << "' is cracking..." << 
+                    "\033[0m" << std::endl;
                 std::vector<string> wl = generate(kv.first);
-                threads.emplace_back(
-                    &Cracker::crack, this, std::cref(wl), kv.second.c_str(), kv.first.c_str()
-                );
-                if (threads.size() == 1) {
-                    for (auto& thread : threads) {
-                        thread.join();
-                    }
-                    threads.clear();
-                }
+                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
+                futures.push_back(std::move(future));
             }
+            std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
+                f.wait();
+            });
         }
 
     private:
@@ -263,7 +258,7 @@ class Cracker {
 
         std::vector<std::string> extender(std::vector<std::string> initial_extensions){
             std::vector<std::string> extensions;
-            for (int i = 1; i < 99999; i++) {
+            for (int i = 0; i < 100001; i++) {
                 std::string str_i = std::to_string(i);
                 extensions.push_back(str_i);
                 extensions.push_back(str_i + "!");
@@ -276,7 +271,7 @@ class Cracker {
                 extensions.push_back(str_i + "!@#$%^");
             }
             initial_extensions.insert(initial_extensions.end(), 
-                                        extensions.begin(), 
+                                         extensions.begin(), 
                                         extensions.end());
             return initial_extensions;
         }
