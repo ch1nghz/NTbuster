@@ -9,5 +9,17 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
+
+      - name: Cache hiredis library
+        id: cache-hiredis
+        uses: actions/cache@v2
+        with:
+          path: /usr/local/lib
+          key: hiredis-${{ runner.os }}-${{ hashFiles('vendor/hiredis/Makefile') }}
+
+      - name: Install hiredis library
+        if: steps.cache-hiredis.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y libhiredis-dev
+
       - name: Build
         run: make
