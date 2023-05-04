@@ -14,12 +14,19 @@ jobs:
         id: cache-hiredis
         uses: actions/cache@v2
         with:
-          path: /usr/local/lib
+          path: ~/hiredis
           key: hiredis-${{ runner.os }}-${{ hashFiles('vendor/hiredis/Makefile') }}
 
-      - name: Install hiredis library
+      - name: Build and install hiredis library
         if: steps.cache-hiredis.outputs.cache-hit != 'true'
-        run: sudo apt-get update && sudo apt-get install -y libhiredis-dev
+        run: |
+          cd vendor/hiredis
+          make
+          sudo make install PREFIX=~/hiredis
+          sudo ldconfig
+
+      - name: Set environment variables for hiredis
+        run: echo "LD_LIBRARY_PATH=$HOME/hiredis/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Build
         run: make
