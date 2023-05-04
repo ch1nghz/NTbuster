@@ -10,26 +10,8 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Cache hiredis library
-        id: cache-hiredis
-        uses: actions/cache@v2
-        with:
-          path: ~/hiredis
-          key: hiredis-${{ runner.os }}-${{ hashFiles('vendor/hiredis/Makefile') }}
-
-      - name: Build and install hiredis library
-        if: steps.cache-hiredis.outputs.cache-hit != 'true'
-        run: |
-          cd vendor/hiredis
-          make
-          sudo make install PREFIX=~/hiredis
-          sudo ldconfig
-
-      - name: Set environment variables for hiredis
-        run: |
-          echo "HIREDIS_INCLUDE_DIR=$HOME/hiredis/include" >> $GITHUB_ENV
-          echo "HIREDIS_LIBRARY_DIR=$HOME/hiredis/lib" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/hiredis/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+      - name: Install hiredis library
+        run: sudo apt-get update && sudo apt-get install -y libhiredis-dev
 
       - name: Build
         run: make
