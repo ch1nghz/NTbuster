@@ -10,6 +10,7 @@ git clone https://github.com/ch1nghz/NTbuster
 cd NTbuster
 git submodule init
 git submodule update
+sudo apt-get update && sudo apt-get install -y libhiredis-dev
 make
 ```
 
