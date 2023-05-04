@@ -158,7 +158,7 @@ class Cracker {
 
         std::unordered_map<std::string, std::string> parse_hashes(const std::string& input) {        
             std::unordered_map<std::string, std::string> result;
-            std::regex re("nthash\\)([^\\[]*)\\[\\*\\]");
+            std::regex re("nthash\\)\\n((?:.*\\n)*?)\\[\\*\\] Cleaning");
             std::string modified_input = input; // Create a non-const copy of the input string
             std::smatch match;
             std::string matched_str;
