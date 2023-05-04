@@ -8,6 +8,8 @@ NTbuster is designed to connect to Windows machines and dump password hashes. It
 ```bash
 git clone https://github.com/ch1nghz/NTbuster
 cd NTbuster
+git submodule init
+git submodule update
 make
 ```
 
