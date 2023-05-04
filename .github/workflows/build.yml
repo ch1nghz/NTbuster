@@ -26,7 +26,10 @@ jobs:
           sudo ldconfig
 
       - name: Set environment variables for hiredis
-        run: echo "LD_LIBRARY_PATH=$HOME/hiredis/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        run: |
+          echo "HIREDIS_INCLUDE_DIR=$HOME/hiredis/include" >> $GITHUB_ENV
+          echo "HIREDIS_LIBRARY_DIR=$HOME/hiredis/lib" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/hiredis/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Build
         run: make
