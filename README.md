@@ -1,11 +1,11 @@
 [![Build Status](https://img.shields.io/badge/C%2B%2B-passing-brightgreen)](https://github.com/your-username/NTbuster)
 
-     _   __________               __           
+```  _   __________               __           
     / | / /_  __/ /_  __  _______/ /____  _____
    /  |/ / / / / __ \/ / / / ___/ __/ _ \/ ___/
   / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    
  /_/ |_/ /_/ /_.___/\__,_/____/\__/\___/_/ 
-
+```
 Next-Generation Password Audit Tool for Windows Machines
 
 NTbuster is designed to connect to Windows machines and dump password hashes. It then generates a custom wordlist based on the dumped usernames and performs a rainbow table attack to crack the passwords.
