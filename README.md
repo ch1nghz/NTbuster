@@ -18,7 +18,7 @@ A system with a minimum of 8GB of available memory and a CPU containing at least
 
 ## Running NTbuster
 ```
-./bin/NTbuster -t 172.16.57.2 -u testuser -p 123456 -m 2
+./bin/ntbuster -t 172.16.57.2 -u testuser -p 123456 -m 2
     _   __________               __           
    / | / /_  __/ /_  __  _______/ /____  _____
   /  |/ / / / / __ \/ / / / ___/ __/ _ \/ ___/
@@ -29,9 +29,9 @@ A system with a minimum of 8GB of available memory and a CPU containing at least
 [*] Parsing dumped hashes...
 [*] The password of 'client' is cracking...
 [*] The password of 'netadmin' is cracking...
-[+] Cracked: ['netadmin':'net*******']
+[+] Cracked: ['netadmin':'net******!']
 [*] The password of 'sysadmin' is cracking...
-[+] Cracked: ['client':'cli**********']
+[+] Cracked: ['client':'cli*********#']
 ```
 The NTbuster wordlist generator also supports custom word input to create a user-defined wordlist.
 ```bash
@@ -40,7 +40,7 @@ orangejuice
 applejuice
 ```
 ```
-./bin/NTbuster -t 172.16.57.2 -u testuser -p 123456 -m 2 -w /tmp/seed_words.txt 
+./bin/ntbuster -t 172.16.57.2 -u testuser -p 123456 -m 2 -w /tmp/seed_words.txt 
     _   __________               __           
    / | / /_  __/ /_  __  _______/ /____  _____
   /  |/ / / / / __ \/ / / / ___/ __/ _ \/ ___/
