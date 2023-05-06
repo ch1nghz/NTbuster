@@ -1,11 +1,6 @@
 [![Build Status](https://img.shields.io/badge/C%2B%2B-passing-brightgreen)](https://github.com/your-username/NTbuster)
                                             
-                                               _   __________               __           
-                                              / | / /_  __/ /_  __  _______/ /____  _____ 
-                                             /  |/ / / / / __ \/ / / / ___/ __/ _ \/ ___/
-                                            / /|  / / / / /_/ / /_/ (__  ) /_/  __/ /    
-                                           /_/ |_/ /_/ /_.___/\__,_/____/\__/\___/_/ 
-                                     
+## NTbuster
 
 Next-Generation Password Audit Tool for Windows Machines
 
