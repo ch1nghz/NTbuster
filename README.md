@@ -1,3 +1,4 @@
+[![Build Status](https://img.shields.io/badge/C%2B%2B-passing-brightgreen)](https://github.com/your-username/NTbuster)
 # NTbuster
 
 Next-Generation Password Audit Tool for Windows Machines
@@ -31,7 +32,7 @@ A system with a minimum of 8GB of available memory and a CPU containing at least
 [*] The password of 'sysadmin' is cracking...
 [+] Cracked: ['client':'cli**********']
 ```
-### The NTbuster wordlist generator also supports custom word input to create a user-defined wordlist.
+The NTbuster wordlist generator also supports custom word input to create a user-defined wordlist.
 ```bash
 cat /tmp/seed_words.txt 
 orangejuice
