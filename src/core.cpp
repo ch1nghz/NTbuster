@@ -48,12 +48,21 @@ class Cracker {
                         std::vector<std::string> wl = generate(seed_word);
                         seed_wordlist.insert(seed_wordlist.end(), wl.begin(), wl.end());
                     }
-                    auto future = std::async(std::launch::async, &Cracker::crack, this, seed_wordlist, kv.second.c_str(), kv.first.c_str());
+                    auto future = std::async(std::launch::async, 
+                                             &Cracker::crack, 
+                                             this, 
+                                             seed_wordlist, 
+                                             kv.second.c_str(), 
+                                             kv.first.c_str());
                     futures.push_back(std::move(future));
                 }
                 else {
                     std::vector<std::string> wl = generate(kv.first);
-                    auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
+                    auto future = std::async(std::launch::async, 
+                                             &Cracker::crack, 
+                                             this, wl, 
+                                             kv.second.c_str(), 
+                                             kv.first.c_str());
                     futures.push_back(std::move(future));
                 }
             }
@@ -110,7 +119,8 @@ class Cracker {
                     result.push_back(username.substr(pos_dot + 1));
                 }   
                     else {
-                    // Neither backslash nor dot found, return the whole string as a single substring
+                    // Neither backslash nor dot found 
+                    // return the whole string as a single substring
                     result.push_back(username);
                 }
 

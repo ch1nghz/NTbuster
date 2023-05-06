@@ -1,7 +1,7 @@
 CC          = g++
 LD          = g++
 CFLAG       = -Wall -I./vendor
-PROG_NAME   = NTbuster
+PROG_NAME   = ntbuster
 STDFLAG     = -std=c++11
 
 SRC_DIR     = ./src
