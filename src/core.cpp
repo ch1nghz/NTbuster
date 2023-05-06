@@ -14,13 +14,10 @@
 #include <cctype>
 #include <future>
 #include <algorithm>
-#include <hiredis/hiredis.h>
 using namespace std;
 
 class Cracker {
     public:
-        redisContext* redis;
-        const char* redis_channel;
         std::string ip_address;
         std::string username;
         std::string password;
@@ -45,20 +42,20 @@ class Cracker {
                     // dot found in domain name
                     result.push_back(domain_name.substr(0, pos_dot_domain_name));
                                 result.push_back(username.substr(pos_backslash + 1, 
-                                                pos_last_dot - pos_backslash - 1));
+                                                 pos_last_dot - pos_backslash - 1));
                                 result.push_back(username.substr(pos_last_dot + 1));
                     }   
                     else if (pos_dot_domain_name != std::string::npos && 
-                            pos_dot_domain_name != pos_last_dot && 
-                            pos_last_dot < pos_backslash) {
+                             pos_dot_domain_name != pos_last_dot && 
+                             pos_last_dot < pos_backslash) {
                         result.push_back(username.substr(0, pos_dot_domain_name));
                         result.push_back(username.substr(pos_backslash + 1));
                     } 
                     else if (pos_dot_domain_name == std::string::npos && 
-                            pos_last_dot > pos_backslash) {
+                             pos_last_dot > pos_backslash) {
                         result.push_back(username.substr(0, pos_backslash));
                         result.push_back(username.substr(pos_backslash + 1, 
-                                        pos_last_dot - pos_backslash - 1));
+                                         pos_last_dot - pos_backslash - 1));
                         result.push_back(username.substr(pos_last_dot + 1));
                     }
                 }   
@@ -107,7 +104,7 @@ class Cracker {
         }
 
 
-        void crack(const std::vector<string>& wordlist, const char* hash, const char* username, redisContext* redis, const char* redis_channel){
+        void crack(const std::vector<string>& wordlist, const char* hash, const char* username){
             for (std::size_t i = 0; i < wordlist.size(); i++) {
                 const char* generated_hash = gen_ntlm(wordlist[i]);
                 if (std::strcmp(hash, generated_hash) == 0) {
@@ -119,20 +116,6 @@ class Cracker {
                     "'" << masked_password << "']" <<
                     "\033[0m" <<
                     std::endl;
-                    // Publish the message to the Redis channel
-                    redisReply* reply = nullptr;
-                    if (redis != nullptr) {
-                        std::string message = "Password Cracked: [" + std::string(username) + ":" + masked_password + "]";
-                        reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, message.c_str());
-                    } else {
-                        std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
-                    }
-                    if (reply != NULL) {
-                        freeReplyObject(reply);
-                    } else {
-                        std::cerr << "\033[1;31m[-] Could not publish message to Redis channel\033[0m" << std::endl;
-                    }
-
                     break;
                 }
             }
@@ -205,30 +188,6 @@ class Cracker {
                 "\033[0m" <<
                 std::endl;
             std::string output = get_ntds(target_machine);
-            redisReply* reply = nullptr;
-            if (output.length() > 0) {
-                if (redis != nullptr) {
-                    reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, "Hashes dumped successfully!");
-                } else {
-                    std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
-                }
-                if (reply != NULL) {
-                    freeReplyObject(reply);
-                }
-                std::cout << "\033[32m" << "[+] Hashes dumped!" << 
-                    "\033[0m" <<
-                    std::endl;
-            } else {
-                if (redis != nullptr) {
-                    reply = (redisReply*)redisCommand(redis, "PUBLISH %s %s", redis_channel, "Hashes could not be retrieved!");
-                } else {
-                    std::cerr << "\033[1;31m[-] Could not connect to Redis server\033[0m" << std::endl;
-                }
-                if (reply != NULL) {
-                    freeReplyObject(reply);
-                }
-                return;
-            }
             std::cout << "\033[33m" << "[*] Parsing dumped hashes..." << 
                 "\033[0m" <<
                 std::endl;
@@ -240,7 +199,7 @@ class Cracker {
                 std::cout << "\033[33m" << "[*] The password of '" << kv.first << "' is cracking..." << 
                     "\033[0m" << std::endl;
                 std::vector<string> wl = generate(kv.first);
-                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str(), redis, redis_channel);
+                auto future = std::async(std::launch::async, &Cracker::crack, this, wl, kv.second.c_str(), kv.first.c_str());
                 futures.push_back(std::move(future));
             }
             std::for_each(futures.begin(), futures.end(), [](std::future<void>& f) {
@@ -306,7 +265,7 @@ class Cracker {
                 extensions.push_back(str_i + "!@#$%^");
             }
             initial_extensions.insert(initial_extensions.end(), 
-                                         extensions.begin(), 
+                                        extensions.begin(), 
                                         extensions.end());
             return initial_extensions;
         }
@@ -338,19 +297,6 @@ int main(int argc, char** argv) {
         std::cerr << "[-] Error: Impacket is not installed. Please install it by running 'pip3 install impacket'." << std::endl;
         return EXIT_FAILURE;
     }
-    // Create a Redis client
-    redisContext* redis = redisConnect("localhost", 6379);
-    if (redis == NULL || redis->err) {
-        if (redis) {
-            std::cerr << "\033[1;31m[-] Redis error: " << redis->errstr << "\033[0m" << std::endl;
-            redisFree(redis);
-        } else {
-            std::cerr << "\033[1;31m[-] Error: Could not allocate redis context\033[0m" << std::endl;
-        }
-    } else {
-        cracker.redis = redis;
-        cracker.redis_channel = "ntbuster";
-    }
     
     CLI::App app{"NTbuster"};
 
@@ -371,9 +317,6 @@ int main(int argc, char** argv) {
     // Use the target value
     cracker.target = target;
     cracker.launch(target_machine);
-
-    // Free the Redis client
-    redisFree(redis);
     
     return 0;
 }
